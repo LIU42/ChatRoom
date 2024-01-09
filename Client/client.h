@@ -9,13 +9,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <ncurses.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <signal.h>
-#include <ncurses.h>
 
 using namespace std;
 
@@ -31,9 +29,11 @@ class chatroom_client
         static constexpr auto REFUSE_FLAG = "n1";
 
     private:
+        thread* receive_thread_ptr;
+
+    private:
         vector<string> messages;
         sockaddr_in server_addr;
-        thread receive_thread;
         mutex message_mutex;
 
     private:
