@@ -120,7 +120,7 @@ chatroom_thread::~chatroom_thread()
     shutdown(client_socket, SHUT_RDWR);
     close(client_socket);
 
-    if (connect_thread_ptr->joinable())
+    if (connect_thread_ptr != nullptr && connect_thread_ptr->joinable())
     {
         connect_thread_ptr->join();
     }

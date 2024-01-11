@@ -19,34 +19,45 @@ chatroom_client::chatroom_client()
 
 chatroom_client::~chatroom_client()
 {
+    is_progess_interrupted = true;
+
     unset_ncurses();
     shutdown(client_socket, SHUT_RDWR);
     close(client_socket);
 
-    if (receive_thread_ptr->joinable())
+    if (receive_thread_ptr != nullptr && receive_thread_ptr->joinable())
     {
         receive_thread_ptr->join();
     }
     delete receive_thread_ptr;
+
     fprintf(stdout, "(System) Client exit.\n");
 }
 
 void chatroom_client::init_ncurses()
 {
-    initscr();
-    cbreak();
-    noecho();
-    curs_set(false);
-    keypad(stdscr, true);
+    if (!is_ncurses_setup)
+    {
+        initscr();
+        cbreak();
+        noecho();
+        curs_set(false);
+        keypad(stdscr, true);
+    }
+    is_ncurses_setup = true;
 }
 
 void chatroom_client::unset_ncurses()
 {
-    nocbreak();
-    keypad(stdscr, true);
-    curs_set(true);
-    echo();
-    endwin();
+    if (is_ncurses_setup)
+    {
+        nocbreak();
+        keypad(stdscr, true);
+        curs_set(true);
+        echo();
+        endwin();
+    }
+    is_ncurses_setup = false;
 }
 
 void chatroom_client::flush_screen()
@@ -68,9 +79,11 @@ void chatroom_client::paint_title()
 
 void chatroom_client::paint_messages()
 {
-    for (int index = max((int)messages.size() - (int)LINES + 6, 0), line = 2; index < messages.size(); index++, line++)
+    move(2, 0);
+
+    for (int index = message_start_index; index < messages.size(); index++)
     {
-        mvprintw(line, 1, "%s", messages[index].data());
+        printw("%s\n", messages[index].data());
     }
 }
 
@@ -86,30 +99,52 @@ void chatroom_client::paint_line()
 
 void chatroom_client::paint_input()
 {
-    mvprintw(LINES - 2, 1, "%s_", message.data());
+    mvprintw(LINES - 2, 1, "%s_", message.substr(max((int)message.length() - (int)COLS + 3, 0)).data());
+}
+
+void chatroom_client::add_message(string message)
+{
+    message_mutex.lock();
+    message_show_lines += get_message_lines(message);
+    messages.emplace_back(message);
+
+    while (message_show_lines > LINES - 6)
+    {
+        message_show_lines -= get_message_lines(messages[message_start_index]);
+        message_start_index += 1;
+    }
+    message_mutex.unlock();
 }
 
 void chatroom_client::receive_handler()
 {
+    message_start_index = 0;
+    message_show_lines = 0;
+    is_progess_interrupted = false;
+
     while (true)
     {
         receive_length = recv(client_socket, receive_buffer, BUFFER_SIZE, 0);
 
         if (receive_length == 0)
         {
+            unset_ncurses();
             fprintf(stdout, "(System) Connection closed.\n");
-            return;
+            break;
         }
         if (receive_length == -1)
         {
+            unset_ncurses();
             fprintf(stderr, "(System) %s.\n", strerror(errno));
-            return;
+            break;
         }
         receive_buffer[receive_length] = '\0';
-        message_mutex.lock();
-        messages.emplace_back(string(receive_buffer));
-        message_mutex.unlock();
+        add_message(string(receive_buffer));
         flush_screen();
+    }
+    if (!is_progess_interrupted)
+    {
+        kill(getpid(), SIGINT);
     }
 }
 
@@ -122,7 +157,7 @@ int chatroom_client::input_interval()
     {
         int input_char = getch();
 
-        if (isprint(input_char) && message.length() < COLS - 2)
+        if (isprint(input_char) && message.length() < BUFFER_SIZE - 3)
         {
             message += (char)input_char;
         }
@@ -137,9 +172,7 @@ int chatroom_client::input_interval()
                 fprintf(stderr, "(System) Message send failure: %s.\n", strerror(errno));
                 return -1;
             }
-            message_mutex.lock();
-            messages.emplace_back(username + ": " + message);
-            message_mutex.unlock();
+            add_message(username + ": " + message);
             message.clear();
         }
         flush_screen();
@@ -190,4 +223,9 @@ int chatroom_client::run_client()
     }
     receive_thread_ptr = new thread(&chatroom_client::receive_handler, this);
     return input_interval();
+}
+
+int chatroom_client::get_message_lines(string& message)
+{
+    return ceil((double)message.length() / COLS);
 }

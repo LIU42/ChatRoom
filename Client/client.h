@@ -12,6 +12,7 @@
 #include <ncurses.h>
 #include <errno.h>
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <signal.h>
 
@@ -45,6 +46,10 @@ class chatroom_client
         char receive_buffer[BUFFER_SIZE];
         int receive_length;
         int client_socket;
+        int message_start_index;
+        int message_show_lines;
+        bool is_progess_interrupted;
+        bool is_ncurses_setup;
 
     private:
         void init_ncurses();
@@ -58,8 +63,10 @@ class chatroom_client
         void paint_input();
 
     private:
+        void add_message(string message);
         void receive_handler();
         int input_interval();
+        int get_message_lines(string& message);
 
     public:
         chatroom_client();
