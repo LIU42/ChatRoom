@@ -24,14 +24,43 @@ chatroom_server::chatroom_server()
 
 chatroom_server::~chatroom_server()
 {
+    is_server_running = false;
+
     shutdown(listen_socket, SHUT_RDWR);
     close(listen_socket);
 
-    for (chatroom_thread* client_thread_ptr : client_thread_pool)
+    if (garbage_collection_thread_ptr != nullptr && garbage_collection_thread_ptr->joinable())
     {
-        delete client_thread_ptr;
+        garbage_collection_thread_ptr->join();
+    }
+    delete garbage_collection_thread_ptr;
+
+    for (auto client_thread_pair : client_thread_pool)
+    {
+        delete client_thread_pair.second;
     }
     fprintf(stdout, "(System) Server end.\n");
+}
+
+void chatroom_server::garbage_collection()
+{
+    is_server_running = true;
+
+    while (is_server_running)
+    {
+        threads_mutex.lock();
+        sockets_mutex.lock();
+
+        for (int offline_socket : offline_sockets)
+        {
+            delete client_thread_pool[offline_socket];
+            client_thread_pool.erase(offline_socket);
+        }
+        offline_sockets.clear();
+        threads_mutex.unlock();
+        sockets_mutex.unlock();
+        sleep(GARBAGE_COLLECTION_DELAY);
+    }
 }
 
 int chatroom_server::consult_username(chatroom_thread* thread_ptr, string& receive_name)
@@ -54,6 +83,7 @@ void chatroom_server::remove_client(chatroom_thread* thread_ptr)
     close(thread_ptr->client_socket);
     sockets_mutex.lock();
     online_sockets.erase(thread_ptr->client_socket);
+    offline_sockets.emplace(thread_ptr->client_socket);
     sockets_mutex.unlock();
     username_mutex.lock();
     online_usernames.erase(thread_ptr->username);
@@ -78,6 +108,8 @@ void chatroom_server::broadcast(chatroom_thread* thread_ptr, string message)
 
 int chatroom_server::run_server()
 {
+    garbage_collection_thread_ptr = new thread(&chatroom_server::garbage_collection, this);
+
     if (listen(listen_socket, QUEUE_LENGTH) == -1)
     {
         fprintf(stderr, "(System) Listen error: %s.\n", strerror(errno));
@@ -95,7 +127,9 @@ int chatroom_server::run_server()
             fprintf(stderr, "(System) Accept error: %s.\n", strerror(errno));
             break;
         }
-        client_thread_pool.emplace_back(new chatroom_thread(this, accept_socket, client_addr));
+        threads_mutex.lock();
+        client_thread_pool[accept_socket] = new chatroom_thread(this, accept_socket, client_addr);
+        threads_mutex.unlock();
 
         sockets_mutex.lock();
         online_sockets.emplace(accept_socket);
@@ -147,6 +181,7 @@ void chatroom_thread::connection_handler()
         receive_string = receive_buffer;
         receive_handler();
     }
+    server_ptr->broadcast(this, username + " left.");
     server_ptr->remove_client(this);
 }
 

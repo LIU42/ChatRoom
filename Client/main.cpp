@@ -10,7 +10,7 @@ void exit_handler(int signal)
 int main(int argc, char* argv[])
 {
     signal(SIGINT, exit_handler);
-    signal(SIGKILL, exit_handler);
+    signal(SIGQUIT, exit_handler);
     
     return client.run_client();
 }

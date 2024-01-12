@@ -1,10 +1,10 @@
 #ifndef __SERVER_H__
 #define __SERVER_H__
 
+#include <unordered_map>
 #include <unordered_set>
 #include <thread>
 #include <string>
-#include <vector>
 #include <mutex>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -23,10 +24,15 @@ class chatroom_server
     private:
         static constexpr auto SERVER_PORT = 8000;
         static constexpr auto QUEUE_LENGTH = 10;
+        static constexpr auto GARBAGE_COLLECTION_DELAY = 1;
 
     private:
-        vector<chatroom_thread*> client_thread_pool;
+        thread* garbage_collection_thread_ptr;
+
+    private:
+        unordered_map<int, chatroom_thread*> client_thread_pool;
         unordered_set<int> online_sockets;
+        unordered_set<int> offline_sockets;
         unordered_set<string> online_usernames;
 
     private:
@@ -36,11 +42,16 @@ class chatroom_server
     private:
         mutex username_mutex;
         mutex sockets_mutex;
+        mutex threads_mutex;
 
     private:
+        bool is_server_running;
         int listen_socket;
         int accept_socket;
         unsigned addr_length;
+
+    private:
+        void garbage_collection();
 
     public:
         int consult_username(chatroom_thread* thread_ptr, string& receive_name);
