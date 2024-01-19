@@ -121,13 +121,13 @@ void chatroom_server::broadcast_message(chatroom_thread* thread_ptr, string mess
 void chatroom_server::broadcast_online_user_count()
 {
     sockets_mutex.lock();
-    snprintf(online_count_buffer, BUFFER_SIZE, "#%d", (int)online_sockets.size());
+    snprintf(online_count_buffer, BUFFER_SIZE, "#%lu", online_sockets.size());
 
     for (int client_socket : online_sockets)
     {
         send(client_socket, online_count_buffer, strlen(online_count_buffer), 0);
     }
-    fprintf(stdout, "(System) Current online users: %d.\n", (int)online_sockets.size());
+    fprintf(stdout, "(System) Current online users: %lu.\n", online_sockets.size());
     sockets_mutex.unlock();
 }
 
