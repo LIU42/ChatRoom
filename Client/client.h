@@ -26,8 +26,15 @@ class chatroom_client
         static constexpr auto BUFFER_SIZE = 2048;
 
     private:
-        static constexpr auto ACCEPT_FLAG = "n0";
-        static constexpr auto REFUSE_FLAG = "n1";
+        static constexpr auto USER_MESSAGE_PREFIX = '$';
+        static constexpr auto ONLINE_COUNT_PREFIX = '#';
+        static constexpr auto ONLINE_COUNT_REQUEST = "#?";
+        static constexpr auto REQUEST_LENGTH = 2;
+
+    private:
+        static constexpr auto ACCEPT_RESPONSE = "&0";
+        static constexpr auto REPEAT_RESPONSE = "&1";
+        static constexpr auto INVALID_RESPONSE = "&2";
 
     private:
         thread* receive_thread_ptr;
@@ -48,6 +55,7 @@ class chatroom_client
         int client_socket;
         int message_start_index;
         int message_show_lines;
+        int online_user_count;
         bool is_progess_interrupted;
         bool is_ncurses_setup;
 
@@ -64,7 +72,9 @@ class chatroom_client
 
     private:
         void add_message(string message);
+        void message_handler(string message);
         void receive_handler();
+        void response_handler();
         int input_interval();
         int get_message_lines(string& message);
 

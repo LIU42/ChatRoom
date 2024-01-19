@@ -62,19 +62,22 @@ void chatroom_client::unset_ncurses()
 
 void chatroom_client::flush_screen()
 {
-    message_mutex.lock();
-    clear();
-    paint_title();
-    paint_messages();
-    paint_line();
-    paint_input();
-    refresh();
-    message_mutex.unlock();
+    if (is_ncurses_setup)
+    {
+        message_mutex.lock();
+        clear();
+        paint_title();
+        paint_messages();
+        paint_line();
+        paint_input();
+        refresh();
+        message_mutex.unlock();
+    }
 }
 
 void chatroom_client::paint_title()
 {
-    mvprintw(0, COLS / 2 - 10, "ChatRoom - (%s)", username.data());
+    mvprintw(0, 4, "ChatRoom - username: %s - online users: %d", username.data(), online_user_count);
 }
 
 void chatroom_client::paint_messages()
@@ -116,14 +119,36 @@ void chatroom_client::add_message(string message)
     message_mutex.unlock();
 }
 
+void chatroom_client::message_handler(string message)
+{
+    if (message.length() <= 0)
+    {
+        return;
+    }
+    else if (message[0] == ONLINE_COUNT_PREFIX)
+    {
+        online_user_count = atoi(message.substr(1).data());
+    }
+    else if (message[0] == USER_MESSAGE_PREFIX)
+    {
+        add_message(message.substr(1));
+    }
+}
+
 void chatroom_client::receive_handler()
 {
     message_start_index = 0;
     message_show_lines = 0;
+    online_user_count = 0;
     is_progess_interrupted = false;
 
     while (true)
     {
+        if (online_user_count == 0 && send(client_socket, ONLINE_COUNT_REQUEST, REQUEST_LENGTH, 0) == -1)
+        {
+            fprintf(stderr, "(System) Online count request failure: %s.\n", strerror(errno));
+            break;
+        }
         receive_length = recv(client_socket, receive_buffer, BUFFER_SIZE, 0);
 
         if (receive_length == 0)
@@ -139,12 +164,28 @@ void chatroom_client::receive_handler()
             break;
         }
         receive_buffer[receive_length] = '\0';
-        add_message(string(receive_buffer));
+        message_handler(string(receive_buffer));
         flush_screen();
     }
     if (!is_progess_interrupted)
     {
         kill(getpid(), SIGINT);
+    }
+}
+
+void chatroom_client::response_handler()
+{
+    if (strcmp(receive_buffer, ACCEPT_RESPONSE) == 0)
+    {
+        username = input;
+    }
+    else if (strcmp(receive_buffer, REPEAT_RESPONSE) == 0)
+    {
+        fprintf(stdout, "(Server) This username is used. Try anothor.\n");
+    }
+    else if (strcmp(receive_buffer, INVALID_RESPONSE) == 0)
+    {
+        fprintf(stdout, "(Server) This username is invalid. Try anothor.\n");
     }
 }
 
@@ -167,7 +208,7 @@ int chatroom_client::input_interval()
         }
         else if ((input_char == KEY_ENTER || input_char == '\n') && message.length() > 0)
         {
-            if (send(client_socket, message.data(), message.length(), 0) == -1)
+            if (send(client_socket, (USER_MESSAGE_PREFIX + message).data(), message.length() + 1, 0) == -1)
             {
                 fprintf(stderr, "(System) Message send failure: %s.\n", strerror(errno));
                 return -1;
@@ -213,13 +254,7 @@ int chatroom_client::run_client()
             return -1;
         }
         receive_buffer[receive_length] = '\0';
-
-        if (strcmp(receive_buffer, ACCEPT_FLAG) == 0)
-        {
-            username = input;
-            break;
-        }
-        fprintf(stdout, "(Server) This username is used. Try anothor.\n");
+        response_handler();
     }
     receive_thread_ptr = new thread(&chatroom_client::receive_handler, this);
     return input_interval();

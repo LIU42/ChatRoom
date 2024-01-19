@@ -63,19 +63,26 @@ void chatroom_server::garbage_collection()
     }
 }
 
-int chatroom_server::consult_username(chatroom_thread* thread_ptr, string& receive_name)
+consult_result chatroom_server::consult_username(chatroom_thread* thread_ptr, string& receive_name)
 {
-    int consult_result = -1;
+    if (receive_name.length() <= 0 || receive_name.find(' ') != receive_name.npos)
+    {
+        return consult_result::RESULT_INVALID;
+    }
     username_mutex.lock();
 
-    if (online_usernames.find(receive_name) == online_usernames.end())
+    if (online_usernames.find(receive_name) != online_usernames.end())
     {
-        consult_result = 0;
-        online_usernames.emplace(receive_name);
-        thread_ptr->username = receive_name;
+        username_mutex.unlock();
+        return consult_result::RESULT_REPEAT;
     }
+    online_usernames.emplace(receive_name);
     username_mutex.unlock();
-    return consult_result;
+    sockets_mutex.lock();
+    online_sockets.emplace(thread_ptr->client_socket);
+    sockets_mutex.unlock();
+    thread_ptr->username = receive_name;
+    return consult_result::RESULT_ACCEPT;
 }
 
 void chatroom_server::remove_client(chatroom_thread* thread_ptr)
@@ -90,20 +97,38 @@ void chatroom_server::remove_client(chatroom_thread* thread_ptr)
     username_mutex.unlock();
 }
 
-void chatroom_server::broadcast(chatroom_thread* thread_ptr, string message)
+void chatroom_server::broadcast_message(chatroom_thread* thread_ptr, string message)
 {
     sockets_mutex.lock();
 
-    for (int client_socket : online_sockets)
+    for (auto client_socket_iter = online_sockets.begin(); client_socket_iter != online_sockets.end();)
     {
-        if (client_socket != thread_ptr->client_socket && send(client_socket, message.data(), message.length(), 0) == -1)
+        if (*client_socket_iter != thread_ptr->client_socket)
         {
-            shutdown(client_socket, SHUT_RDWR);
-            close(client_socket);
+            if (send(*client_socket_iter, (USER_MESSAGE_PREFIX + message).data(), message.length() + 1, 0) == -1)
+            {
+                offline_sockets.emplace(*client_socket_iter);
+                client_socket_iter = online_sockets.erase(client_socket_iter);
+                continue;
+            }
         }
+        ++client_socket_iter;
     }
     sockets_mutex.unlock();
     fprintf(stdout, "%s:%d %s\n", inet_ntoa(thread_ptr->client_addr.sin_addr), thread_ptr->client_addr.sin_port, message.data());
+}
+
+void chatroom_server::broadcast_online_user_count()
+{
+    sockets_mutex.lock();
+    snprintf(online_count_buffer, BUFFER_SIZE, "#%d", (int)online_sockets.size());
+
+    for (int client_socket : online_sockets)
+    {
+        send(client_socket, online_count_buffer, strlen(online_count_buffer), 0);
+    }
+    fprintf(stdout, "(System) Current online users: %d.\n", (int)online_sockets.size());
+    sockets_mutex.unlock();
 }
 
 int chatroom_server::run_server()
@@ -130,10 +155,6 @@ int chatroom_server::run_server()
         threads_mutex.lock();
         client_thread_pool[accept_socket] = new chatroom_thread(this, accept_socket, client_addr);
         threads_mutex.unlock();
-
-        sockets_mutex.lock();
-        online_sockets.emplace(accept_socket);
-        sockets_mutex.unlock();
 
         fprintf(stdout, "(System) %s:%d connected.\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port);
     }
@@ -181,22 +202,38 @@ void chatroom_thread::connection_handler()
         receive_string = receive_buffer;
         receive_handler();
     }
-    server_ptr->broadcast(this, username + " left.");
+    server_ptr->broadcast_message(this, username + " left.");
     server_ptr->remove_client(this);
+    server_ptr->broadcast_online_user_count();
 }
 
 void chatroom_thread::receive_handler()
 {
-    if (username.length() > 0)
+    if (username.length() > 0 && receive_string.length() > 0)
     {
-        server_ptr->broadcast(this, username + ": " + receive_string);
+        if (receive_string[0] == chatroom_server::ONLINE_COUNT_PREFIX)
+        {
+            server_ptr->broadcast_online_user_count();
+        }
+        else if (receive_string[0] == chatroom_server::USER_MESSAGE_PREFIX)
+        {
+            server_ptr->broadcast_message(this, username + ": " + receive_string.substr(1));
+        }
         return;
     }
-    if (server_ptr->consult_username(this, receive_string) == 0)
+    consult_result consult_username_result = server_ptr->consult_username(this, receive_string);
+
+    if (consult_username_result == consult_result::RESULT_ACCEPT)
     {
-        server_ptr->broadcast(this, username + " joined.");
-        send(client_socket, ACCEPT_FLAG, FLAG_LENGTH, 0);
-        return;
+        server_ptr->broadcast_message(this, username + " joined.");
+        send(client_socket, ACCEPT_RESPONSE, RESPONSE_LENGTH, 0);
     }
-    send(client_socket, REFUSE_FLAG, FLAG_LENGTH, 0);
+    else if (consult_username_result == consult_result::RESULT_REPEAT)
+    {
+        send(client_socket, REPEAT_RESPONSE, RESPONSE_LENGTH, 0);
+    }
+    else if (consult_username_result == consult_result::RESULT_INVALID)
+    {
+        send(client_socket, INVALID_RESPONSE, RESPONSE_LENGTH, 0);
+    }
 }
