@@ -1,7 +1,5 @@
 #include "server.h"
 
-chatroom_server server;
-
 void exit_handler(int signal)
 {
     exit(EXIT_SUCCESS);
@@ -9,6 +7,8 @@ void exit_handler(int signal)
 
 int main(int argc, char* argv[])
 {
+    static chatroom_server server;
+
     signal(SIGINT, exit_handler);
     signal(SIGQUIT, exit_handler);
 

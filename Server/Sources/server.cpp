@@ -2,6 +2,7 @@
 
 chatroom_server::chatroom_server()
 {
+    addr_length = sizeof(sockaddr);
     listen_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     if (listen_socket == -1)
@@ -141,7 +142,6 @@ int chatroom_server::run_server()
         return -1;
     }
     fprintf(stdout, "(System) Server listening at %d.\n", SERVER_PORT);
-    addr_length = sizeof(sockaddr);
 
     while (true)
     {

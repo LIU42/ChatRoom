@@ -50,6 +50,7 @@ class chatroom_server
     private:
         sockaddr_in server_addr;
         sockaddr_in client_addr;
+        socklen_t addr_length;
 
     private:
         mutex username_mutex;
@@ -61,7 +62,6 @@ class chatroom_server
         bool is_server_running;
         int listen_socket;
         int accept_socket;
-        unsigned addr_length;
 
     private:
         void garbage_collection();
