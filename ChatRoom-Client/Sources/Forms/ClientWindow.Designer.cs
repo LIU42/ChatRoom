@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ClientWindow));
 			menuStrip = new MenuStrip();
 			startMenuItem = new ToolStripMenuItem();
 			serverConfigMenuItem = new ToolStripMenuItem();
@@ -218,6 +219,7 @@
 			ClientSize = new Size(800, 570);
 			Controls.Add(mainLayout);
 			Controls.Add(menuStrip);
+			Icon = (Icon)resources.GetObject("$this.Icon");
 			MainMenuStrip = menuStrip;
 			MinimumSize = new Size(818, 617);
 			Name = "ClientWindow";

@@ -10,6 +10,7 @@
     <BaseOutputPath>Builds\bin</BaseOutputPath>
     <BaseIntermediateOutputPath>Builds\obj</BaseIntermediateOutputPath>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <ApplicationIcon>Assets\Images\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -31,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Sources\Assets\Resources.Designer.cs">
+    <Compile Update="Sources\Configs\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
@@ -39,10 +40,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="Sources\Assets\Resources.resx">
+    <EmbeddedResource Update="Sources\Configs\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <CustomToolNamespace>ChatRoom.Assets</CustomToolNamespace>
+      <CustomToolNamespace>ChatRoom.Configs</CustomToolNamespace>
     </EmbeddedResource>
   </ItemGroup>
 

@@ -10,4 +10,4 @@
 
 ## 效果展示
 
-![效果展示](ChatRoom-Client/Assets/example.png "效果展示")
+<img title="效果展示" src="ChatRoom-Client/Assets/Images/example.png" alt="效果展示" data-align="center" style="zoom:80%;">

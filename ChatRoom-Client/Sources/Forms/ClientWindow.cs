@@ -1,4 +1,4 @@
-using ChatRoom.Assets;
+using ChatRoom.Configs;
 
 namespace ChatRoom.Forms
 {

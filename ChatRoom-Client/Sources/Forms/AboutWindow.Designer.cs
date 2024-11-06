@@ -58,6 +58,7 @@
 			ClientSize = new Size(400, 200);
 			Controls.Add(contentLabel);
 			Controls.Add(titleLabel);
+			FormBorderStyle = FormBorderStyle.FixedDialog;
 			MaximizeBox = false;
 			MdiChildrenMinimizedAnchorBottom = false;
 			MinimizeBox = false;
