@@ -10,6 +10,9 @@ int main(int argc, char* argv[])
 {
     signal(SIGINT, terminate);
     signal(SIGQUIT, terminate);
+    signal(SIGKILL, terminate);
+    signal(SIGTERM, terminate);
+    signal(SIGSTOP, terminate);
 
     if (initialize_server() == 0)
     {
