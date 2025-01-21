@@ -37,22 +37,23 @@ int initialize_server()
     return 0;
 }
 
-void close_server()
+void close_server(int signal)
 {
     if (close(listen_sock) == -1)
     {
         fprintf(stdout, "(system) close listen sock fail: %s.\n", strerror(errno));
     }
     close_connection_pool();
-    fprintf(stdout, "(system) server closed.\n");
+    fprintf(stdout, "(system) server closed. signal: %d\n", signal);
+    exit(0);
 }
 
-void start_listening()
+int start_listening()
 {
     if (listen(listen_sock, MAX_WAITING_REQUESTS) == -1)
     {
         fprintf(stderr, "(system) error at start listening: %s.\n", strerror(errno));
-        return;
+        return -1;
     }
     fprintf(stdout, "(system) server listening at port %d.\n", SERVER_PORT);
 
@@ -63,9 +64,20 @@ void start_listening()
         if (accept_sock == -1)
         {
             fprintf(stderr, "(system) accept error: %s.\n", strerror(errno));
-            break;
+            return -1;
         }
         add_connection(accept_sock, client_addr);
     }
     fprintf(stdout, "(system) server listening end.\n");
+    return 0;
+}
+
+int start_server()
+{
+    if (initialize_server() != 0)
+    {
+        fprintf(stdout, "(system) server initialize fail.\n");
+        return -1;
+    }
+    return start_listening();
 }

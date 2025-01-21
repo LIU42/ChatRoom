@@ -18,7 +18,7 @@ namespace ChatRoom.Forms
 			configWindow = new ConfigWindow();
 
 			clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			clientThread = new Thread(RecevieMessageLoop);
+			clientThread = new Thread(MessageReceiveLoop);
 		}
 
 		private void OnAboutItemClick(object sender, EventArgs args)
@@ -31,7 +31,7 @@ namespace ChatRoom.Forms
 			configWindow.ShowDialog();
 		}
 
-		private void RecevieMessageLoop()
+		private void MessageReceiveLoop()
 		{
 			byte[] receiveBuffer = new byte[2048];
 
@@ -90,7 +90,7 @@ namespace ChatRoom.Forms
 				sendButton.Enabled = true;
 				disconnectMenuItem.Enabled = true;
 			}
-			catch (Exception)
+			catch
 			{
 				AddMessage(Resources.ConnectFailureMessage);
 
@@ -148,7 +148,7 @@ namespace ChatRoom.Forms
 					sendInputBox.Clear();
 				}
 			}
-			catch (Exception)
+			catch
 			{
 				AddMessage(Resources.SendFailureMessage);
 			}

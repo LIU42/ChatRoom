@@ -16,17 +16,6 @@
 #define ADDR_BUFFER_SIZE 32
 #define CLEANER_WORKING_DELAY 5
 
-struct connection
-{
-    pthread_t session_thread;
-    int client_sock;
-    int client_alive;
-    char recv_buffer[RECV_BUFFER_SIZE];
-    char addr_buffer[ADDR_BUFFER_SIZE];
-    struct connection* next;
-    struct connection* prev;
-};
-
 int initialize_connection_pool();
 int add_connection(int client_sock, struct sockaddr_in client_addr);
 

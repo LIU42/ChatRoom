@@ -2,6 +2,17 @@
 
 pthread_t cleaner_thread = 0;
 
+struct connection
+{
+    pthread_t session_thread;
+    int client_sock;
+    int client_alive;
+    char recv_buffer[RECV_BUFFER_SIZE];
+    char addr_buffer[ADDR_BUFFER_SIZE];
+    struct connection* next;
+    struct connection* prev;
+};
+
 struct connection* head_connection = NULL;
 struct connection* tail_connection = NULL;
 

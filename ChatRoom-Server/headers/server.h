@@ -14,9 +14,7 @@
 #define SERVER_PORT 8000
 #define MAX_WAITING_REQUESTS 16
 
-int initialize_server();
-
-void close_server();
-void start_listening();
+int start_server();
+void close_server(int signal);
 
 #endif
