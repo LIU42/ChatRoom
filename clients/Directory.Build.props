@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <BaseOutputPath>Builds\bin</BaseOutputPath>
+    <BaseIntermediateOutputPath>Builds\obj</BaseIntermediateOutputPath>
+    <UseHostCompilerIfAvailable>false</UseHostCompilerIfAvailable>
+    <MSBuildProjectExtensionsPath>Builds\obj</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+</Project>
